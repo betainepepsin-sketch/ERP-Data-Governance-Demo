@@ -2,168 +2,128 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
-# Standard enterprise configuration
-st.set_page_config(page_title="T100 Enterprise ERP System", layout="wide")
+# 1. 全域變數定義 (確保不發生 NameError)
+DEPT_LIST = [
+    "資材部 (INV)", "採購部 (PUR)", "生管部 (PMC)", "銷售部 (SAL)", 
+    "製造部 (MFG)", "品管部 (QC)", "研發部 (R&D)", "財務部 (FIN)", 
+    "管理部 (ADM)", "經理室 (MGR)", "總經理室 (GM)", "資訊部 (MIS)",
+    "會計部 (ACC)", "物流部 (LOG)", "工安部 (ESH)"
+]
 
-def get_ts(offset=0):
-    return (datetime.now() + timedelta(days=offset)).strftime("%Y-%m-%d %H:%M")
+st.set_page_config(page_title="T100 ERP Enterprise System", layout="wide")
 
-# User Identity Simulation
-st.sidebar.header("User Control Panel")
-op_id = st.sidebar.selectbox("System User ID", ["MIS-ADMIN-01", "SALES-MGR-02", "FIN-ACC-05", "PMC-USER-08"])
+def get_time(days=0):
+    return (datetime.now() + timedelta(days=days)).strftime("%Y-%m-%d %H:%M")
+
+# Sidebar
+st.sidebar.header("ERP 系統權限控制")
+auth_user = st.sidebar.selectbox("登入帳號", ["ADMIN-001", "MANAGER-05", "USER-SFC-02"])
+# 新增要求：至少 12 個部門的下拉選單
+current_dept = st.sidebar.selectbox("切換當前部門", DEPT_LIST)
 st.sidebar.divider()
-st.sidebar.info("DB Instance: T100_PROD\nRegion: Taiwan-HQ")
+st.sidebar.success(f"連線狀態: T100_PROD_ACTIVE")
 
-st.title("T100 Enterprise Resource Planning - Professional Integration")
+# Header
+st.title("T100 ERP 企業級整合管理系統")
 
-# Global Context Headers
 c1, c2, c3 = st.columns([2, 1, 1])
 with c1:
-    search_main = st.text_input("🔍 全域關鍵字檢索 (工單/料號/供應商/批號)", "")
+    st.text_input("🔍 全域關鍵字搜尋 (料號/單據/供應商/批號/負責人)", "")
 with c2:
-    target_site = st.selectbox("廠別區域", ["第一廠 (Main Plant)", "第二廠 (Assembly)", "外包加工廠", "保稅倉庫"])
+    # 修改要求：下拉選單改為「訂單時間」
+    order_period = st.selectbox("訂單時間 (Order Period)", ["2026-04", "2026-03", "2026-Q1", "2025-Q4"])
 with c3:
-    period_select = st.selectbox("會計期間", ["2026-04", "2026-03", "2026-Q1"])
+    site_loc = st.selectbox("營運中心/廠區", ["一廠 (台北)", "二廠 (桃園)", "三廠 (越南)", "外包倉"])
 
 st.divider()
 
-# 12 Professional ERP Modules
-tab_labels = [
+# 12 Professional Tabs
+tabs = st.tabs([
     "📦 庫存資材", "🛒 採購供應", "⚙️ 生產管制", "💰 財務應付", 
     "📊 銷售管理", "🧪 品質檢驗", "🛠️ 研發工程", "📂 人事薪資", 
     "🚚 物流配送", "📐 固定資產", "📈 成本會計", "📝 稽核紀錄"
-]
-tabs = st.tabs(tab_labels)
+])
 
-# --- TAB 1: Inventory (觸發左右拉桿) ---
-with tabs[0]:
-    st.subheader("INV - Inventory Material Control")
-    inv_data = {
-        "料號": [f"YF-P-{100+i:03d}" for i in range(12)],
-        "品名規格": ["不鏽鋼機殼", "主板電路", "馬達模組", "封口墊片", "控制面板", "連接線組", "散熱鰭片", "電源器", "傳感器", "緊固件", "標籤組", "包裝箱"],
-        "類別": ["半成品", "組裝品", "組裝品", "原料", "半成品", "原料", "半成品", "外購件", "外購件", "原料", "耗材", "耗材"],
-        "現有庫存": [1500, 240, 85, 8000, 450, 2000, 120, 35, 600, 50000, 3000, 1200],
-        "未來可用庫存": [1800, 300, 100, 7500, 500, 2100, 150, 40, 650, 48000, 2800, 1100],
-        "單位": ["PCS", "PCS", "SET", "M", "PCS", "PCS", "SET", "PCS", "PCS", "KG", "ROLL", "PCS"],
-        "儲位代號": [f"W1-A{i:02d}" for i in range(12)],
-        "所在廠區": [target_site for _ in range(12)],
-        "外包狀態": ["自有" if i % 3 != 0 else "外包加工" for i in range(12)],
-        "批號": [f"BATCH2604-{i:02d}" for i in range(12)],
-        "安全水位": [500 for _ in range(12)],
-        "建立時間": [get_ts(-60) for _ in range(12)],
-        "最後異動": [get_ts() for _ in range(12)],
-        "經手人": [op_id for _ in range(12)],
-        "備註紀錄": ["N/A" for _ in range(12)]
-    }
-    # 超過 8 個欄位會自動出現左右拉桿
-    st.data_editor(pd.DataFrame(inv_data), use_container_width=True, hide_index=True)
+# 共通函式：生成超過 15 欄的資料以觸發左右拉桿
+def generate_erp_data(module_type):
+    data = []
+    for i in range(15):  # 固定生成 15 筆，觸發上下拉桿
+        row = {
+            "單據/料號代碼": f"{module_type}-{20260400+i}",
+            "品名規格": f"工業級組件-{i:02d} 型",
+            "類別": ["半成品", "組裝品", "外包加工", "原料", "成品"][i%5],
+            "廠別位置": site_loc,
+            "目前庫存": 1000 + (i*50),
+            "未來預估庫存": 1200 + (i*45),
+            "安全水位": 500,
+            "供應商代號": f"V-{500+i}",
+            "供應商名稱": ["台鋼", "鴻海", "廣達", "緯創", "仁寶"][i%5],
+            "付款方式": ["T/T 30D", "L/C", "Cash", "T/T 60D"][i%4],
+            "票期": f"{30+(i*5)}D",
+            "交貨時間": get_time(i),
+            "已交數量": 5000,
+            "未交數量": 200,
+            "經手人": f"OP-{i:03d}",
+            "負責人": f"MGR-{i:02d}",
+            "建立時間": get_time(-10),
+            "最後修改時間": get_time(),
+            "備註事項": "系統自動核算中"
+        }
+        data.append(row)
+    return pd.DataFrame(data)
 
-# --- TAB 5: Sales (補全內容) ---
-with tabs[4]:
-    st.subheader("SAL - Order & Shipping Management")
-    sal_data = {
-        "訂單編號": [f"SO-2026-{i:04d}" for i in range(12)],
-        "客戶代號": [f"CUST-{i:03d}" for i in range(12)],
-        "客戶名稱": ["美商 Apple", "日商 Sony", "台積電", "鴻海精密", "廣達電腦", "華碩電腦", "微星科技", "戴爾", "惠普", "聯想", "三星", "LG"],
-        "預計交期": [get_ts(i+10) for i in range(12)],
-        "幣別": ["USD", "TWD", "JPY", "EUR", "USD", "TWD", "TWD", "USD", "USD", "CNY", "KRW", "USD"],
-        "訂單總額": [50000 * i for i in range(1, 13)],
-        "業務負責人": ["SALES-01" for _ in range(12)],
-        "出貨狀態": ["待出貨", "部分交貨", "已結案", "待出貨", "待出貨", "待出貨", "已結案", "部分交貨", "已結案", "待出貨", "待出貨", "待出貨"],
-        "付款條件": "OA 30 Days",
-        "建立時間": get_ts(-5),
-        "修改紀錄": "Rev.0"
-    }
-    st.data_editor(pd.DataFrame(sal_data), use_container_width=True, hide_index=True)
+# 分別填充 12 個模組的內容
+with tabs[0]: # 庫存
+    st.subheader("INV - Inventory & Material Master")
+    st.data_editor(generate_erp_data("INV"), use_container_width=True, hide_index=True)
 
-# --- TAB 6: Quality (補全內容) ---
-with tabs[5]:
-    st.subheader("QC - Quality Assurance & Inspection")
-    qc_data = {
-        "檢驗單號": [f"QC-0402-{i:03d}" for i in range(12)],
-        "來源單號": [f"PUR-0401-{i:03d}" for i in range(12)],
-        "品名規格": ["精密螺母", "電容 A1", "鋁質外殼", "連接頭", "包裝膜", "說明書", "PCB板", "散熱膠", "電池芯", "塑膠件", "緩衝墊", "外盒"],
-        "檢驗結果": ["合格", "合格", "異常", "合格", "待複檢", "合格", "合格", "異常", "合格", "合格", "合格", "待複檢"],
-        "異常原因": ["無", "無", "表面刮傷", "無", "厚度不足", "無", "無", "過期", "無", "無", "無", "印刷錯誤"],
-        "檢驗員": ["QC-DAVID" for _ in range(12)],
-        "判定時間": get_ts()
-    }
-    st.data_editor(pd.DataFrame(qc_data), use_container_width=True, hide_index=True)
+with tabs[1]: # 採購
+    st.subheader("PUR - Procurement Management")
+    st.data_editor(generate_erp_data("PUR"), use_container_width=True, hide_index=True)
 
-# --- TAB 7: R&D (補全內容) ---
-with tabs[6]:
-    st.subheader("R&D - Product Engineering (BOM)")
-    rd_data = {
-        "專案代號": [f"PROJ-V26-{i:02d}" for i in range(12)],
-        "版本號": [f"V{i}.0" for i in range(12)],
-        "設計負責人": ["ENG-CHEN", "ENG-LIN", "ENG-WANG"] * 4,
-        "研發狀態": ["設計中", "打樣中", "驗證完成", "量產導入"] * 3,
-        "CAD檔案編號": [f"DWG-F{1000+i}" for i in range(12)],
-        "建立日期": get_ts(-100)
-    }
-    st.data_editor(pd.DataFrame(rd_data), use_container_width=True, hide_index=True)
+with tabs[2]: # 生產
+    st.subheader("SFC - Production & Shop Floor Control")
+    st.data_editor(generate_erp_data("SFC"), use_container_width=True, hide_index=True)
 
-# --- TAB 8: HR (補全內容) ---
-with tabs[7]:
-    st.subheader("HR - Personnel & Payroll Admin")
-    hr_data = {
-        "工號": [f"EMP-{1000+i}" for i in range(12)],
-        "姓名": ["張一", "李二", "王三", "趙四", "錢五", "孫六", "李七", "周八", "吳九", "鄭十", "劉十一", "陳十二"],
-        "部門": DEPARTMENTS * 1,
-        "職位": ["經理", "課長", "組長", "專員", "技術員", "技術員", "專員", "專員", "課長", "經理", "技術員", "專員"],
-        "出勤狀況": "正常",
-        "入職日期": "2020-01-01"
-    }
-    st.data_editor(pd.DataFrame(hr_data), use_container_width=True, hide_index=True)
+with tabs[3]: # 財務
+    st.subheader("FIN - Accounts Payable/Receivable")
+    st.data_editor(generate_erp_data("FIN"), use_container_width=True, hide_index=True)
 
-# --- TAB 9: Logistics (補全內容) ---
-with tabs[8]:
-    st.subheader("DEL - Logistics & Fleet Tracking")
-    del_data = {
-        "物流單號": [f"SHIP-{i:04d}" for i in range(12)],
-        "物流公司": ["順豐", "黑貓", "嘉里大榮", "新竹物流"] * 3,
-        "車牌號碼": [f"ABC-{100+i}" for i in range(12)],
-        "目的地": ["桃園總倉", "台中分部", "高雄二廠", "新竹園區"] * 3,
-        "配送狀態": "運送中",
-        "預計到達": get_ts(1)
-    }
-    st.data_editor(pd.DataFrame(del_data), use_container_width=True, hide_index=True)
+with tabs[4]: # 銷售
+    st.subheader("SAL - Sales & Distribution")
+    st.data_editor(generate_erp_data("SAL"), use_container_width=True, hide_index=True)
 
-# --- TAB 10: Fixed Assets (補全內容) ---
-with tabs[9]:
+with tabs[5]: # 品檢
+    st.subheader("QC - Quality Control & Inspection")
+    st.data_editor(generate_erp_data("QC"), use_container_width=True, hide_index=True)
+
+with tabs[6]: # 研發
+    st.subheader("R&D - Engineering Change Management")
+    st.data_editor(generate_erp_data("R&D"), use_container_width=True, hide_index=True)
+
+with tabs[7]: # 人事
+    st.subheader("HR - Human Capital Management")
+    st.data_editor(generate_erp_data("HR"), use_container_width=True, hide_index=True)
+
+with tabs[8]: # 物流
+    st.subheader("LOG - Logistics & Delivery Tracking")
+    st.data_editor(generate_erp_data("LOG"), use_container_width=True, hide_index=True)
+
+with tabs[9]: # 固資
     st.subheader("FAM - Fixed Asset Management")
-    fam_data = {
-        "資產編號": [f"FA-MACH-{i:03d}" for i in range(12)],
-        "資產名稱": ["沖壓機", "CNC切削機", "SMT機台", "測試機", "堆高機", "伺服器", "辦公室家具", "空壓機", "封口機", "噴碼機", "投影機", "冷氣主機"],
-        "原值": [500000 * i for i in range(1, 13)],
-        "折舊年限": ["10年", "8年", "5年", "5年", "10年", "3年", "5年", "8年", "5年", "5年", "3年", "10年"],
-        "使用狀態": "使用中"
-    }
-    st.data_editor(pd.DataFrame(fam_data), use_container_width=True, hide_index=True)
+    st.data_editor(generate_erp_data("FAM"), use_container_width=True, hide_index=True)
 
-# --- TAB 11: Cost (補全內容) ---
-with tabs[10]:
-    st.subheader("COST - Product Costing & Analysis")
-    cost_data = {
-        "產品代號": [f"YF-PROD-{i:03d}" for i in range(12)],
-        "標準成本": [100.0, 150.5, 200.0, 45.0, 89.0, 120.0, 350.0, 1000.0, 55.0, 78.0, 12.0, 95.0],
-        "實際成本": [102.0, 149.0, 210.0, 44.0, 92.0, 118.0, 360.0, 980.0, 56.0, 80.0, 13.0, 90.0],
-        "差異額": [2.0, -1.5, 10.0, -1.0, 3.0, -2.0, 10.0, -20.0, 1.0, 2.0, 1.0, -5.0],
-        "結算日期": "2026-03-31"
-    }
-    st.data_editor(pd.DataFrame(cost_data), use_container_width=True, hide_index=True)
+with tabs[10]: # 成本
+    st.subheader("COST - Cost Accounting & Analysis")
+    st.data_editor(generate_erp_data("COST"), use_container_width=True, hide_index=True)
 
-# --- TAB 12: Audit ---
-with tabs[11]:
-    st.subheader("SYS - Security Audit Tracking")
-    # 此處已修正，不使用 code 形式，改用 Table
-    audit_data = {
-        "Seq": range(1, 13),
-        "Event_ID": [f"EVT-99{i:02d}" for i in range(12)],
-        "User": op_id,
-        "Table_Modified": "TB_GLOBAL_MASTER",
-        "Action": "Query/Update",
-        "Client_IP": "172.16.0.45",
-        "Time": get_ts()
-    }
-    st.table(pd.DataFrame(audit_data))
+with tabs[11]: # 稽核
+    st.subheader("SYS - System Audit & Security Logs")
+    # 稽核模組通常不使用 editor 改用 dataframe
+    st.dataframe(generate_erp_data("LOG"), use_container_width=True, hide_index=True)
+
+# Footer Status
+st.divider()
+col_f1, col_f2 = st.columns(2)
+col_f1.write(f"© 2026 T100 ERP Solutions. All Rights Reserved. | Site: {site_loc}")
+col_f2.write(f"系統效能: SGA 32GB | Active Processes: 452 | DB Version: Oracle 19c")
