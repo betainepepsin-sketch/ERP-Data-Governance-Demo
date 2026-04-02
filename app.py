@@ -1,72 +1,124 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime, timedelta
 
-st.set_page_config(page_title="T100 ERP Management System", layout="wide")
+st.set_page_config(page_title="T100 Enterprise ERP System", layout="wide")
 
-if 'auth_success' not in st.session_state:
-    st.session_state.auth_success = False
+if 'audit_trail' not in st.session_state:
+    st.session_state.audit_trail = []
 
-st.sidebar.title("ERP Authentication")
-access_code = st.sidebar.text_input("Enter 8-digit Access Code", type="password")
+def get_timestamp():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-if len(access_code) == 8 and access_code == "12345678":
-    st.session_state.auth_success = True
-    st.sidebar.success("Authentication Verified")
-elif len(access_code) > 0:
-    st.sidebar.error("Invalid Access Code")
+operator_id = st.sidebar.selectbox("Operator ID", ["MIS-9901", "PUR-2005", "SFC-3001", "FIN-1002", "SAL-4008"])
+st.sidebar.divider()
+st.sidebar.write(f"Server: T100-PROD-AS01")
+st.sidebar.write(f"Database: Oracle 19.3c")
 
-if st.session_state.auth_success:
-    st.title("T100 ERP Enterprise Resource Planning")
+st.title("T100 Enterprise Resource Planning - Standard Edition")
+
+col_h1, col_h2, col_h3 = st.columns([2, 1, 1])
+with col_h1:
+    search_bar = st.text_input("Global Search (Doc No / Part No / Vendor)", "")
+with col_h2:
+    dept_select = st.selectbox("Department / 權責部門", [
+        "資材部 (Material)", "生管部 (PMC)", "採購部 (PUR)", "業務部 (SALES)", 
+        "研發部 (R&D)", "製造部 (MFG)", "品管部 (QC)", "財務部 (FIN)", 
+        "管理部 (ADMIN)", "經理室 (MANAGER)", "總經理室 (GM)", "資訊部 (MIS)"
+    ])
+with col_h3:
+    doc_status = st.multiselect("Doc Status", ["Draft", "Open", "Approved", "Closed", "Hold"], default=["Open", "Approved"])
+
+st.divider()
+
+tab_inv, tab_pur, tab_sfc, tab_fin, tab_sys = st.tabs([
+    "📦 庫存資材管理", "🛒 採購與供應鏈", "⚙️ 生產現場管制", "💰 財務應收應付", "🛠️ 系統稽核維護"
+])
+
+# --- TAB: Inventory ---
+with tab_inv:
+    st.subheader("Inventory Stock Status (INV)")
+    inv_data = {
+        "料號": ["YF-2026-001", "YF-2026-002", "YF-2026-003"],
+        "品名規格": ["SUS304 Cold Rolled", "Power Unit V2", "IC Controller B1"],
+        "庫存數量": [5000.0, 120.0, 850.0],
+        "未交貨量": [200.0, 15.0, 100.0],
+        "已交貨量": [4800.0, 105.0, 750.0],
+        "單位": ["KG", "SET", "PCS"],
+        "儲位代號": ["WH01-A1", "WH02-B3", "WH01-C2"],
+        "建立時間": ["2026-01-10 08:00", "2026-02-15 10:30", "2026-03-01 14:00"],
+        "修改時間": [get_timestamp(), get_timestamp(), get_timestamp()],
+        "經手人": ["WH-001", "WH-002", "WH-001"]
+    }
+    st.data_editor(pd.DataFrame(inv_data), use_container_width=True)
+
+# --- TAB: Purchase ---
+with tab_pur:
+    st.subheader("Purchase Order Management (PUR)")
+    pur_data = {
+        "採購單號": ["PUR26040001", "PUR26040002", "PUR26040003"],
+        "供應商代號": ["V00125", "V00342", "V00089"],
+        "供應商名稱": ["台鋼金屬工業", "精密電子組件", "永泰化學"],
+        "付款方式": ["T/T 30 Days", "L/C at Sight", "T/T 60 Days"],
+        "票期": ["30D", "0D", "60D"],
+        "交貨時間": ["2026-04-15", "2026-04-20", "2026-05-01"],
+        "負責人": ["PUR-ZHANG", "PUR-LEE", "PUR-WANG"],
+        "建立時間": ["2026-03-25 09:00", "2026-03-28 11:00", "2026-04-01 16:00"],
+        "修改紀錄": ["User: PUR-ZHANG | Rev: 1", "User: PUR-LEE | Rev: 0", "User: PUR-WANG | Rev: 2"]
+    }
+    st.data_editor(pd.DataFrame(pur_data), use_container_width=True)
+
+# --- TAB: SFC ---
+with tab_sfc:
+    st.subheader("Shop Floor Control (SFC)")
+    sfc_data = {
+        "工單編號": ["WO-040201", "WO-040202"],
+        "產線代號": ["LINE-01", "LINE-03"],
+        "計畫產量": [1000, 500],
+        "報工數量": [850, 0],
+        "良率": ["98.5%", "0.0%"],
+        "開工時間": ["2026-04-02 08:00", "2026-04-03 08:00"],
+        "預計完工": ["2026-04-02 17:00", "2026-04-03 17:00"],
+        "經手人": ["OP-A01", "OP-B05"]
+    }
+    st.data_editor(pd.DataFrame(sfc_data), use_container_width=True)
+
+# --- TAB: Approval/Financial ---
+with tab_fin:
+    st.subheader("BPM Workflow & Financial Approval")
+    bpm_data = {
+        "Approve": [False, False, False],
+        "單據編號": ["AP-2604001", "PAY-2604015", "EXP-2604009"],
+        "金額": [1250000.0, 45000.0, 8900.0],
+        "幣別": ["TWD", "USD", "TWD"],
+        "申請人": ["PMC-LEE", "PUR-ZHANG", "MIS-DAVID"],
+        "簽核階段": ["經理部審核", "財務部覆核", "總經理核决"],
+        "建立時間": ["2026-04-01 10:00", "2026-04-01 14:00", "2026-04-02 09:00"]
+    }
+    # Interactive selection for approval
+    selected_apps = st.data_editor(pd.DataFrame(bpm_data), use_container_width=True, hide_index=True)
     
-    col1, col2, col3 = st.columns([2, 1, 1])
-    with col1:
-        search_query = st.text_input("🔍 全域關鍵字搜尋 (料號/品名/供貨商)", "")
-    with col2:
-        category_filter = st.selectbox("單據類型", ["全部單據", "採購訂單", "生產工單", "庫存異動"])
-    with col3:
-        status_filter = st.selectbox("簽核狀態", ["全部", "待簽核", "已核准", "退回"])
+    c1, c2, c3 = st.columns([1, 1, 8])
+    if c1.button("Bulk Approve"):
+        st.success(f"Audit Trail: Operator {operator_id} approved selected records at {get_timestamp()}")
+        st.session_state.audit_trail.append({"Time": get_timestamp(), "User": operator_id, "Event": "Bulk Approval Executed"})
+    if c2.button("Reject"):
+        st.error("Workflow status updated to: REJECTED")
 
+# --- TAB: System Maintenance ---
+with tab_sys:
+    st.subheader("System Audit Log (Standard Compliance)")
+    if st.session_state.audit_trail:
+        st.table(pd.DataFrame(st.session_state.audit_trail))
+    else:
+        st.write("No critical changes recorded in current session.")
+    
     st.divider()
-
-    tabs = st.tabs(["庫存管理作業", "生產報工系統", "電子簽核中心", "系統維護紀錄"])
-
-    with tabs[0]:
-        raw_data = {
-            "料號": ["YF-A001", "YF-A002", "YF-B001", "YF-B002", "YF-C001", "YF-C002", "YF-D001", "YF-D002"],
-            "品名規格": ["不鏽鋼外殼", "高壓密封墊", "主控電路板", "散熱模組", "感應器單元", "連接線組", "工業級外箱", "防震泡棉"],
-            "現有庫存": [1200, 450, 80, 200, 150, 3000, 50, 500],
-            "單位": ["PCS", "SET", "PCS", "PCS", "PCS", "M", "PCS", "ROLL"],
-            "安全水位": [1000, 500, 100, 150, 100, 2500, 40, 400],
-            "單價(未稅)": [450, 120, 3500, 850, 1200, 45, 1800, 250],
-            "儲位": ["A-01-01", "A-02-05", "B-01-03", "B-03-01", "C-01-02", "D-05-01", "E-01-01", "E-02-01"],
-            "供貨商": ["台鋼實業", "歐美貿易", "精密電子", "散熱專家", "感測科技", "萬聯線材", "強固包裝", "防震材料"]
-        }
-        df = pd.DataFrame(raw_data)
-        
-        if search_query:
-            df = df[df['料號'].str.contains(search_query) | df['品名規格'].str.contains(search_query)]
-
-        st.write("### 實時庫存清單 (可直接編輯數值)")
-        # 使用 data_editor 達成可修改數值與滿版效果
-        edited_df = st.data_editor(df, use_container_width=True, num_rows="dynamic")
-
-    with tabs[2]:
-        st.write("### 電子簽核中心 (BPM Workflow)")
-        approval_data = {
-            "單據編號": ["PUR-20260401-001", "MFG-20260401-023", "INV-20260331-045"],
-            "申請部門": ["採購部", "生產部", "倉庫"],
-            "申請人": ["張曉明", "李大華", "王小美"],
-            "摘要": ["原材料採購申請", "機殼生產報工", "逾期料件報廢"],
-            "金額": [550000, 0, 12500],
-            "狀態": ["待簽核", "待簽核", "已核准"]
-        }
-        st.table(pd.DataFrame(approval_data))
-        
-        col_btn1, col_btn2 = st.columns([1, 10])
-        with col_btn1:
-            st.button("核准選取單據")
-        with col_btn2:
-            st.button("退回單據")
-
-else:
-    st.info("System Initializing... Please enter the 8-digit access code in the sidebar.")
+    st.subheader("Database Health")
+    st.json({
+        "Instance": "T100_PROD",
+        "SGA_Size": "32GB",
+        "Active_Processes": 452,
+        "Last_Backup": "2026-04-02 02:00:01",
+        "Tablespace_Usage": "68.5%"
+    })
