@@ -2,123 +2,129 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 
+# Set page to wide mode for multi-column ERP tables
 st.set_page_config(page_title="T100 Enterprise ERP System", layout="wide")
 
-if 'audit_trail' not in st.session_state:
-    st.session_state.audit_trail = []
+def get_current_time(offset_days=0):
+    return (datetime.now() + timedelta(days=offset_days)).strftime("%Y-%m-%d %H:%M")
 
-def get_timestamp():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# 12 Departments according to T100 Org Structure
+DEPARTMENTS = [
+    "生管部 (PMC)", "採購部 (PUR)", "業務部 (SAL)", "資材部 (INV)", 
+    "製造部 (MFG)", "品管部 (QC)", "研發部 (R&D)", "財務部 (FIN)", 
+    "管理部 (ADM)", "經理室 (MGR)", "總經理室 (GM)", "資訊部 (MIS)"
+]
 
-operator_id = st.sidebar.selectbox("Operator ID", ["MIS-9901", "PUR-2005", "SFC-3001", "FIN-1002", "SAL-4008"])
-st.sidebar.divider()
-st.sidebar.write(f"Server: T100-PROD-AS01")
-st.sidebar.write(f"Database: Oracle 19.3c")
+# Sidebar Config
+st.sidebar.header("User Environment")
+current_user = st.sidebar.selectbox("Current User ID", ["SYS-ADMIN", "PMC-USER-01", "PUR-MGR-05", "FIN-ACC-02"])
+st.sidebar.info(f"Connected to: T100_PROD_DB\nStatus: Operational")
 
-st.title("T100 Enterprise Resource Planning - Standard Edition")
+# Top Header Section
+st.title("T100 Enterprise Resource Planning - Multi-Module Integrated System")
 
-col_h1, col_h2, col_h3 = st.columns([2, 1, 1])
-with col_h1:
-    search_bar = st.text_input("Global Search (Doc No / Part No / Vendor)", "")
-with col_h2:
-    dept_select = st.selectbox("Department / 權責部門", [
-        "資材部 (Material)", "生管部 (PMC)", "採購部 (PUR)", "業務部 (SALES)", 
-        "研發部 (R&D)", "製造部 (MFG)", "品管部 (QC)", "財務部 (FIN)", 
-        "管理部 (ADMIN)", "經理室 (MANAGER)", "總經理室 (GM)", "資訊部 (MIS)"
-    ])
-with col_h3:
-    doc_status = st.multiselect("Doc Status", ["Draft", "Open", "Approved", "Closed", "Hold"], default=["Open", "Approved"])
+h_col1, h_col2, h_col3 = st.columns([2, 1, 1])
+with h_col1:
+    global_search = st.text_input("🔍 全域單據/料號/供應商關鍵字搜尋", "")
+with h_col2:
+    dept_ctx = st.selectbox("權責部門切換", DEPARTMENTS)
+with h_col3:
+    st.write("")
+    if st.button("執行同步 (Data Sync)"):
+        st.toast("Database Sync Completed.")
 
 st.divider()
 
-tab_inv, tab_pur, tab_sfc, tab_fin, tab_sys = st.tabs([
-    "📦 庫存資材管理", "🛒 採購與供應鏈", "⚙️ 生產現場管制", "💰 財務應收應付", "🛠️ 系統稽核維護"
-])
+# 12 Core ERP Modules as Tabs
+tab_list = [
+    "📦 庫存資材", "🛒 採購供應", "⚙️ 生產管制", "💰 財務應付", 
+    "📊 銷售管理", "🧪 品質檢驗", "🛠️ 研發工程", "📂 人事薪資", 
+    "🚚 物流配送", "📐 固定資產", "📈 成本會計", "📝 稽核紀錄"
+]
+tabs = st.tabs(tab_list)
 
-# --- TAB: Inventory ---
-with tab_inv:
-    st.subheader("Inventory Stock Status (INV)")
+# --- Module 01: Inventory ---
+with tabs[0]:
+    st.subheader("INV - Inventory Material Management")
     inv_data = {
-        "料號": ["YF-2026-001", "YF-2026-002", "YF-2026-003"],
-        "品名規格": ["SUS304 Cold Rolled", "Power Unit V2", "IC Controller B1"],
-        "庫存數量": [5000.0, 120.0, 850.0],
-        "未交貨量": [200.0, 15.0, 100.0],
-        "已交貨量": [4800.0, 105.0, 750.0],
-        "單位": ["KG", "SET", "PCS"],
-        "儲位代號": ["WH01-A1", "WH02-B3", "WH01-C2"],
-        "建立時間": ["2026-01-10 08:00", "2026-02-15 10:30", "2026-03-01 14:00"],
-        "修改時間": [get_timestamp(), get_timestamp(), get_timestamp()],
-        "經手人": ["WH-001", "WH-002", "WH-001"]
+        "料號代號": [f"YF-R-100{i}" for i in range(12)],
+        "品名規格": ["不鏽鋼板", "伺服馬達", "驅動電路", "密封膠條", "高壓閥門", "散熱模組", "感應元件", "連接導線", "機殼組件", "避震彈簧", "控制面板", "緊固螺栓"],
+        "現有庫存": [5200, 150, 300, 5000, 45, 210, 1500, 8000, 120, 400, 85, 50000],
+        "單位": ["KG", "SET", "PCS", "M", "PCS", "PCS", "PCS", "M", "PCS", "PCS", "SET", "PCS"],
+        "儲位": [f"WH-A{i:02d}" for i in range(12)],
+        "建立時間": [get_current_time(-30) for _ in range(12)],
+        "最後修改時間": [get_current_time() for _ in range(12)],
+        "經手人": [current_user for _ in range(12)]
     }
-    st.data_editor(pd.DataFrame(inv_data), use_container_width=True)
+    st.data_editor(pd.DataFrame(inv_data), use_container_width=True, hide_index=True)
 
-# --- TAB: Purchase ---
-with tab_pur:
-    st.subheader("Purchase Order Management (PUR)")
+# --- Module 02: Purchase ---
+with tabs[1]:
+    st.subheader("PUR - Strategic Sourcing & Procurement")
     pur_data = {
-        "採購單號": ["PUR26040001", "PUR26040002", "PUR26040003"],
-        "供應商代號": ["V00125", "V00342", "V00089"],
-        "供應商名稱": ["台鋼金屬工業", "精密電子組件", "永泰化學"],
-        "付款方式": ["T/T 30 Days", "L/C at Sight", "T/T 60 Days"],
-        "票期": ["30D", "0D", "60D"],
-        "交貨時間": ["2026-04-15", "2026-04-20", "2026-05-01"],
-        "負責人": ["PUR-ZHANG", "PUR-LEE", "PUR-WANG"],
-        "建立時間": ["2026-03-25 09:00", "2026-03-28 11:00", "2026-04-01 16:00"],
-        "修改紀錄": ["User: PUR-ZHANG | Rev: 1", "User: PUR-LEE | Rev: 0", "User: PUR-WANG | Rev: 2"]
+        "採購單號": [f"PUR202604-{i:03d}" for i in range(12)],
+        "供應商代號": [f"V-TW{100+i}" for i in range(12)],
+        "供應商名稱": ["台鋼工業", "精密電子", "歐美機件", "強固包裝", "萬聯線材", "感測科技", "永泰化學", "中鋼結構", "遠東紡織", "南亞塑膠", "日月光材", "光寶電組"],
+        "付款方式": ["T/T 30D", "L/C at Sight", "T/T 60D", "Cash", "T/T 90D", "T/T 30D", "L/C 30D", "T/T 60D", "T/T 30D", "Cash", "T/T 30D", "L/C 60D"],
+        "票期": ["30", "0", "60", "0", "90", "30", "30", "60", "30", "0", "30", "60"],
+        "交貨日期": [get_current_time(i+5) for i in range(12)],
+        "未交數量": [100, 20, 50, 0, 15, 200, 0, 500, 40, 0, 10, 1000],
+        "已交數量": [900, 80, 250, 1000, 85, 1800, 50, 4500, 160, 500, 90, 9000],
+        "負責人": ["PUR-MGR-01" for _ in range(12)]
     }
-    st.data_editor(pd.DataFrame(pur_data), use_container_width=True)
+    st.data_editor(pd.DataFrame(pur_data), use_container_width=True, hide_index=True)
 
-# --- TAB: SFC ---
-with tab_sfc:
-    st.subheader("Shop Floor Control (SFC)")
+# --- Module 03: Production ---
+with tabs[2]:
+    st.subheader("SFC - Shop Floor Control & Planning")
     sfc_data = {
-        "工單編號": ["WO-040201", "WO-040202"],
-        "產線代號": ["LINE-01", "LINE-03"],
-        "計畫產量": [1000, 500],
-        "報工數量": [850, 0],
-        "良率": ["98.5%", "0.0%"],
-        "開工時間": ["2026-04-02 08:00", "2026-04-03 08:00"],
-        "預計完工": ["2026-04-02 17:00", "2026-04-03 17:00"],
-        "經手人": ["OP-A01", "OP-B05"]
+        "工單號碼": [f"WO-MFG-{2600+i}" for i in range(12)],
+        "產品代號": [f"PROD-X{i}" for i in range(12)],
+        "預計產量": [1000 for _ in range(12)],
+        "完工數量": [800, 500, 1000, 0, 450, 900, 300, 700, 150, 0, 80, 500],
+        "製程站別": ["沖壓", "銲接", "塗裝", "組裝", "測試", "包裝", "沖壓", "銲接", "測試", "組裝", "組裝", "檢驗"],
+        "計畫開工": [get_current_time(-i) for i in range(12)],
+        "計畫完工": [get_current_time(i) for i in range(12)],
+        "當班負責人": ["OP-ADMIN" for _ in range(12)]
     }
-    st.data_editor(pd.DataFrame(sfc_data), use_container_width=True)
+    st.data_editor(pd.DataFrame(sfc_data), use_container_width=True, hide_index=True)
 
-# --- TAB: Approval/Financial ---
-with tab_fin:
-    st.subheader("BPM Workflow & Financial Approval")
-    bpm_data = {
-        "Approve": [False, False, False],
-        "單據編號": ["AP-2604001", "PAY-2604015", "EXP-2604009"],
-        "金額": [1250000.0, 45000.0, 8900.0],
-        "幣別": ["TWD", "USD", "TWD"],
-        "申請人": ["PMC-LEE", "PUR-ZHANG", "MIS-DAVID"],
-        "簽核階段": ["經理部審核", "財務部覆核", "總經理核决"],
-        "建立時間": ["2026-04-01 10:00", "2026-04-01 14:00", "2026-04-02 09:00"]
+# --- Module 04: Financial (BPM Approval) ---
+with tabs[3]:
+    st.subheader("FIN - Accounts Payable & BPM Workflow")
+    fin_data = {
+        "勾選": [False for _ in range(12)],
+        "單據編號": [f"AP-INV-{i:03d}" for i in range(12)],
+        "金額 (TWD)": [15000 * i for i in range(1, 13)],
+        "付款方式": "匯款",
+        "申請部門": DEPARTMENTS,
+        "申請人": ["USER-A" for _ in range(12)],
+        "狀態": ["待簽核" if i % 2 == 0 else "核准" for i in range(12)],
+        "建立時間": [get_current_time(-1) for _ in range(12)]
     }
-    # Interactive selection for approval
-    selected_apps = st.data_editor(pd.DataFrame(bpm_data), use_container_width=True, hide_index=True)
-    
+    st.data_editor(pd.DataFrame(fin_data), use_container_width=True, hide_index=True)
     c1, c2, c3 = st.columns([1, 1, 8])
-    if c1.button("Bulk Approve"):
-        st.success(f"Audit Trail: Operator {operator_id} approved selected records at {get_timestamp()}")
-        st.session_state.audit_trail.append({"Time": get_timestamp(), "User": operator_id, "Event": "Bulk Approval Executed"})
-    if c2.button("Reject"):
-        st.error("Workflow status updated to: REJECTED")
+    with c1:
+        if st.button("✅ 批次核准 (Post)"): st.success("Approved Successfully.")
+    with c2:
+        if st.button("❌ 退回 (Reject)"): st.error("Returned to Requester.")
 
-# --- TAB: System Maintenance ---
-with tab_sys:
-    st.subheader("System Audit Log (Standard Compliance)")
-    if st.session_state.audit_trail:
-        st.table(pd.DataFrame(st.session_state.audit_trail))
-    else:
-        st.write("No critical changes recorded in current session.")
-    
-    st.divider()
-    st.subheader("Database Health")
-    st.json({
-        "Instance": "T100_PROD",
-        "SGA_Size": "32GB",
-        "Active_Processes": 452,
-        "Last_Backup": "2026-04-02 02:00:01",
-        "Tablespace_Usage": "68.5%"
-    })
+# --- Module 12: Audit Log ---
+with tabs[11]:
+    st.subheader("SYS - System Audit Trail (Standard Compliance)")
+    log_data = {
+        "事件編號": [f"LOG-00{i:02d}" for i in range(12)],
+        "操作時間": [get_current_time() for _ in range(12)],
+        "操作員 ID": [current_user for _ in range(12)],
+        "動作類型": ["Update", "Delete", "Login", "Approve", "Insert", "Export", "Sync", "Update", "Update", "Delete", "Login", "Approve"],
+        "影響對象": ["TB_INV_BALANCE", "TB_PUR_ORDER", "SESSION_01", "TB_BPM_PROC", "TB_MFG_SFC", "REPORT_XLSX", "DB_REMOTE", "TB_SAL_PRICE", "TB_INV_SERIAL", "TB_SYS_CONFIG", "SESSION_02", "TB_BPM_PROC"],
+        "來源 IP": ["192.168.1.105" for _ in range(12)],
+        "備註": ["Standard Operation" for _ in range(12)]
+    }
+    st.dataframe(pd.DataFrame(log_data), use_container_width=True, hide_index=True)
+
+# Placeholder for remaining empty modules
+for i in range(4, 11):
+    with tabs[i]:
+        st.warning(f"Module '{tab_list[i]}' is currently in Read-Only Mode.")
+        st.info("Please contact IT Department for full data access permissions.")
