@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🏥 ERP T100 資料系統 - 實戰 Demo
+# 🏥 T100 ERP Demo 作品
 
 ### 👉 [點此開啟：ERP-Data-Governance-Demo 網頁連結](https://erp-data-governance-demo-cmz7nog9imzwxarytzhpcc.streamlit.app/)
 
